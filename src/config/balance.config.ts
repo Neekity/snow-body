@@ -1,7 +1,7 @@
 export const BALANCE = {
   player: {
     speed: 160,
-    jumpForce: -330,
+    jumpForce: -420,
     gravity: 800,
     lives: 3,
     invincibilityDuration: 2000,

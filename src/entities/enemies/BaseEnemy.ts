@@ -10,6 +10,7 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   protected meltTimer: number = 0;
   protected direction: number = 1; // 1 = right, -1 = left
   protected player?: Phaser.Physics.Arcade.Sprite;
+  protected turnCooldown: number = 0;
 
   constructor(
     scene: Phaser.Scene,
@@ -162,9 +163,16 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
     body.setVelocityX(this.config.speed * this.direction);
     this.setFlipX(this.direction < 0);
 
-    // Turn around at edges (if on ground)
+    // Update turn cooldown
+    if (this.turnCooldown > 0) {
+      this.turnCooldown -= 16; // Approximate delta (60fps = ~16ms)
+      return;
+    }
+
+    // Turn around at edges or walls (if on ground)
     if (body.blocked.down && (body.blocked.left || body.blocked.right)) {
       this.direction *= -1;
+      this.turnCooldown = 500; // 500ms cooldown before next turn
     }
   }
 
