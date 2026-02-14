@@ -25,7 +25,7 @@ export const BALANCE = {
   enemies: {
     goblin: {
       type: 'goblin' as const,
-      speed: 60,
+      speed: 40,
       health: 1,
       scoreValue: 100,
       snowThresholds: [34, 67, 100] as [number, number, number],
@@ -34,7 +34,7 @@ export const BALANCE = {
     },
     demon: {
       type: 'demon' as const,
-      speed: 80,
+      speed: 50,
       health: 1,
       scoreValue: 200,
       snowThresholds: [34, 67, 100] as [number, number, number],
@@ -44,7 +44,7 @@ export const BALANCE = {
     },
     redDemon: {
       type: 'red_demon' as const,
-      speed: 120,
+      speed: 80,
       health: 1,
       scoreValue: 300,
       snowThresholds: [25, 50, 100] as [number, number, number],

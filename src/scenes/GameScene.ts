@@ -146,6 +146,9 @@ export class GameScene extends Phaser.Scene {
     // Listen for level complete event
     this.events.on('level:complete', this.handleLevelComplete, this);
 
+    // Listen for player death event
+    this.events.on('player:died', this.handlePlayerDeath, this);
+
     // Add HUD text
     this.hudText = this.add.text(10, 10, '', {
       fontSize: '16px',
@@ -194,7 +197,7 @@ export class GameScene extends Phaser.Scene {
     const remaining = this.spawnManager.getRemainingEnemies();
     const total = this.spawnManager.getTotalEnemies();
 
-    this.hudText.setText(`Lives: ${lives} | Score: ${score} | Enemies: ${remaining}/${total}`);
+    this.hudText.setText(`Lives: ${lives}\nScore: ${score}\nEnemies: ${remaining}/${total}`);
   }
 
   private handleEnemyFrozen(enemy: BaseEnemy): void {
@@ -230,5 +233,9 @@ export class GameScene extends Phaser.Scene {
     this.time.delayedCall(2000, () => {
       this.scene.pause();
     });
+  }
+
+  private handlePlayerDeath(): void {
+    this.scene.start('GameOverScene');
   }
 }
