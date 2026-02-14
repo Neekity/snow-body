@@ -18,6 +18,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private activePowerUps: Map<PowerUpType, number> = new Map();
   private baseSpeed: number = BALANCE.player.speed;
   private baseShootCooldown: number = BALANCE.player.shootCooldown;
+  private score: number = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y, 'player');
@@ -343,8 +344,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   public getScore(): number {
-    // TODO: Implement score tracking
-    return 0;
+    return this.score;
+  }
+
+  public addScore(points: number): void {
+    this.score += points;
   }
 
   public applyPowerUp(type: PowerUpType): void {

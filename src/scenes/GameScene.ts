@@ -7,6 +7,7 @@ import { InputManager } from '../systems/InputManager';
 import { SpawnManager } from '../systems/SpawnManager';
 import { CollisionManager } from '../systems/CollisionManager';
 import { ComboSystem } from '../systems/ComboSystem';
+import { SaveManager } from '../systems/SaveManager';
 import { LevelData } from '../types/levels';
 import { PowerUpType } from '../types/entities';
 import { BALANCE } from '../config/balance.config';
@@ -84,6 +85,9 @@ export class GameScene extends Phaser.Scene {
     const width = this.cameras.main.width;
     const height = this.cameras.main.height;
 
+    // Load save data
+    const saveData = SaveManager.load();
+
     // Create placeholder background
     this.add.rectangle(0, 0, width, height, 0x87CEEB).setOrigin(0);
 
@@ -151,6 +155,9 @@ export class GameScene extends Phaser.Scene {
     // Listen for frozen enemies to convert them to snowballs
     this.events.on('enemy:frozen', this.handleEnemyFrozen, this);
 
+    // Listen for enemy defeated to update score
+    this.events.on('enemy:defeated', this.handleEnemyDefeated, this);
+
     // Listen for power-up collection
     this.events.on('powerup:collected', this.handlePowerUpCollected, this);
 
@@ -211,12 +218,13 @@ export class GameScene extends Phaser.Scene {
     const remaining = this.spawnManager.getRemainingEnemies();
     const total = this.spawnManager.getTotalEnemies();
     const activePowerUps = this.player.getActivePowerUps();
+    const saveData = SaveManager.load();
 
     const powerUpText = activePowerUps.length > 0
       ? `\nPowerUps: ${activePowerUps.join(', ')}`
       : '';
 
-    this.hudText.setText(`Lives: ${lives}\nScore: ${score}\nEnemies: ${remaining}/${total}${powerUpText}`);
+    this.hudText.setText(`Lives: ${lives}\nScore: ${score}\nHigh Score: ${saveData.highScore}\nEnemies: ${remaining}/${total}${powerUpText}`);
   }
 
   private handleEnemyFrozen(enemy: BaseEnemy): void {
@@ -251,11 +259,29 @@ export class GameScene extends Phaser.Scene {
     enemy.setVisible(false);
   }
 
+  private handleEnemyDefeated(data: { enemy: BaseEnemy; score: number }): void {
+    // Add score to player
+    this.player.addScore(data.score);
+
+    // Update high score
+    SaveManager.updateHighScore(this.player.getScore());
+
+    // Update stats
+    const saveData = SaveManager.load();
+    SaveManager.updateStats({
+      totalEnemiesDefeated: saveData.stats.totalEnemiesDefeated + 1,
+    });
+  }
+
   private handlePowerUpCollected(data: { type: PowerUpType; powerup: PowerUp }): void {
     this.player.applyPowerUp(data.type);
   }
 
   private handleLevelComplete(): void {
+    // Update level progress
+    const saveData = SaveManager.load();
+    SaveManager.updateLevelProgress(saveData.currentLevel);
+
     // Show level complete message
     const width = this.cameras.main.width;
     const height = this.cameras.main.height;
@@ -272,6 +298,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handlePlayerDeath(): void {
+    // Update stats
+    const saveData = SaveManager.load();
+    SaveManager.updateStats({
+      gamesPlayed: saveData.stats.gamesPlayed + 1,
+    });
+
     this.scene.start('GameOverScene');
   }
 }

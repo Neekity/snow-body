@@ -296,4 +296,8 @@ export abstract class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   public getSnowLevel(): number {
     return this.snowLevel;
   }
+
+  public getScoreValue(): number {
+    return this.config.scoreValue;
+  }
 }
