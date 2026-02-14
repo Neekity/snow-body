@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { Player } from '../entities/Player';
 import { BaseEnemy } from '../entities/enemies/BaseEnemy';
 import { Snowball } from '../entities/Snowball';
+import { PowerUp } from '../entities/PowerUp';
 import { BALANCE } from '../config/balance.config';
 
 export class CollisionManager {
@@ -10,6 +11,7 @@ export class CollisionManager {
   private enemies: Phaser.GameObjects.Group;
   private platforms: Phaser.Physics.Arcade.StaticGroup;
   private snowballs: Phaser.GameObjects.Group;
+  private powerUps: Phaser.GameObjects.Group;
   private activeShots: Phaser.Physics.Arcade.Sprite[] = [];
 
   constructor(
@@ -17,13 +19,15 @@ export class CollisionManager {
     player: Player,
     enemies: Phaser.GameObjects.Group,
     platforms: Phaser.Physics.Arcade.StaticGroup,
-    snowballs: Phaser.GameObjects.Group
+    snowballs: Phaser.GameObjects.Group,
+    powerUps: Phaser.GameObjects.Group
   ) {
     this.scene = scene;
     this.player = player;
     this.enemies = enemies;
     this.platforms = platforms;
     this.snowballs = snowballs;
+    this.powerUps = powerUps;
 
     this.ensureSnowShotTexture();
     this.setupCollisions();
@@ -91,6 +95,15 @@ export class CollisionManager {
       this
     );
 
+    // Player <-> PowerUps (collect)
+    this.scene.physics.add.overlap(
+      this.player,
+      this.powerUps,
+      (player, powerUp) => {
+        (powerUp as PowerUp).collect();
+      }
+    );
+
     // Listen for snow shot events from player
     this.scene.events.on('player:shoot', this.handlePlayerShoot, this);
   }
@@ -142,6 +155,7 @@ export class CollisionManager {
     x: number;
     y: number;
     direction: number;
+    rangeMultiplier?: number;
   }): void {
     // Enforce max active shots
     this.cleanupDestroyedShots();
@@ -160,6 +174,7 @@ export class CollisionManager {
     this.activeShots.push(snowShot);
 
     const startX = data.x;
+    const rangeMultiplier = data.rangeMultiplier ?? 1.0;
 
     // SnowShot <-> Enemies (apply snow)
     const collider = this.scene.physics.add.overlap(
@@ -180,7 +195,7 @@ export class CollisionManager {
       }
 
       const distanceTraveled = Math.abs(snowShot.x - startX);
-      if (distanceTraveled >= BALANCE.snowShot.range) {
+      if (distanceTraveled >= BALANCE.snowShot.range * rangeMultiplier) {
         this.destroyShot(snowShot, collider, updateHandler);
       }
     };

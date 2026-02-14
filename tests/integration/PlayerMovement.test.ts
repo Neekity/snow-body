@@ -294,6 +294,7 @@ describe('Player Integration', () => {
         x: player.x,
         y: player.y,
         direction: 1, // facing right by default
+        rangeMultiplier: 1,
       });
     });
 
@@ -335,7 +336,7 @@ describe('Player Integration', () => {
 
       expect(scene.events.emit).toHaveBeenCalledWith(
         'player:shoot',
-        expect.objectContaining({ direction: -1 }),
+        expect.objectContaining({ direction: -1, rangeMultiplier: 1 }),
       );
     });
   });

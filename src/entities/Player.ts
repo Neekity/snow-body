@@ -8,12 +8,16 @@ import {
 } from '../fsm/PlayerStates';
 import { InputState } from '../types/input';
 import { BALANCE } from '../config/balance.config';
+import { PowerUpType } from '../types/entities';
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
   private stateMachine: StateMachine<PlayerState, PlayerEvent>;
   private shootCooldown: number = 0;
   private invincibilityTimer: number = 0;
   public lives: number;
+  private activePowerUps: Map<PowerUpType, number> = new Map();
+  private baseSpeed: number = BALANCE.player.speed;
+  private baseShootCooldown: number = BALANCE.player.shootCooldown;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y, 'player');
@@ -141,6 +145,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     this.shootCooldown = Math.max(0, this.shootCooldown - delta);
     this.invincibilityTimer = Math.max(0, this.invincibilityTimer - delta);
+    this.updatePowerUps();
 
     this.updateStateMachine();
     this.handleInput(inputState);
@@ -178,14 +183,18 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       return;
     }
 
+    const speed = this.activePowerUps.has('speed')
+      ? this.baseSpeed * BALANCE.powerUps.speed.multiplier
+      : this.baseSpeed;
+
     if (inputState.left) {
-      body.setVelocityX(-BALANCE.player.speed);
+      body.setVelocityX(-speed);
       this.setFlipX(true);
       if (currentState === PLAYER_STATES.IDLE) {
         this.stateMachine.transition(PLAYER_EVENTS.RUN);
       }
     } else if (inputState.right) {
-      body.setVelocityX(BALANCE.player.speed);
+      body.setVelocityX(speed);
       this.setFlipX(false);
       if (currentState === PLAYER_STATES.IDLE) {
         this.stateMachine.transition(PLAYER_EVENTS.RUN);
@@ -281,11 +290,21 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   private shoot(): void {
-    this.shootCooldown = BALANCE.player.shootCooldown;
+    const cooldown = this.activePowerUps.has('rapid_fire')
+      ? this.baseShootCooldown * BALANCE.powerUps.rapidFire.cooldownMultiplier
+      : this.baseShootCooldown;
+
+    this.shootCooldown = cooldown;
+
+    const rangeMultiplier = this.activePowerUps.has('range')
+      ? BALANCE.powerUps.range.multiplier
+      : 1.0;
+
     this.scene.events.emit('player:shoot', {
       x: this.x,
       y: this.y,
       direction: this.flipX ? -1 : 1,
+      rangeMultiplier,
     });
   }
 
@@ -326,5 +345,42 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   public getScore(): number {
     // TODO: Implement score tracking
     return 0;
+  }
+
+  public applyPowerUp(type: PowerUpType): void {
+    const config = BALANCE.powerUps;
+
+    switch (type) {
+      case 'speed':
+        this.activePowerUps.set('speed', Date.now() + config.speed.duration);
+        break;
+      case 'range':
+        this.activePowerUps.set('range', Date.now() + config.range.duration);
+        break;
+      case 'rapid_fire':
+        this.activePowerUps.set('rapid_fire', Date.now() + config.rapidFire.duration);
+        break;
+      case 'extra_life':
+        this.lives++;
+        this.scene.events.emit('player:life-gained');
+        break;
+      case 'bomb':
+        this.scene.events.emit('player:bomb-activated');
+        break;
+    }
+  }
+
+  private updatePowerUps(): void {
+    const now = Date.now();
+
+    for (const [type, expiry] of this.activePowerUps.entries()) {
+      if (now >= expiry) {
+        this.activePowerUps.delete(type);
+      }
+    }
+  }
+
+  public getActivePowerUps(): PowerUpType[] {
+    return Array.from(this.activePowerUps.keys());
   }
 }

@@ -1,12 +1,15 @@
 import Phaser from 'phaser';
 import { Player } from '../entities/Player';
 import { Snowball } from '../entities/Snowball';
+import { PowerUp } from '../entities/PowerUp';
 import { BaseEnemy } from '../entities/enemies/BaseEnemy';
 import { InputManager } from '../systems/InputManager';
 import { SpawnManager } from '../systems/SpawnManager';
 import { CollisionManager } from '../systems/CollisionManager';
 import { ComboSystem } from '../systems/ComboSystem';
 import { LevelData } from '../types/levels';
+import { PowerUpType } from '../types/entities';
+import { BALANCE } from '../config/balance.config';
 
 export class GameScene extends Phaser.Scene {
   private player!: Player;
@@ -16,6 +19,7 @@ export class GameScene extends Phaser.Scene {
   private collisionManager!: CollisionManager;
   private comboSystem!: ComboSystem;
   private snowballs!: Phaser.GameObjects.Group;
+  private powerUps!: Phaser.GameObjects.Group;
   private hudText!: Phaser.GameObjects.Text;
 
   constructor() {
@@ -125,13 +129,20 @@ export class GameScene extends Phaser.Scene {
     // Create snowballs group
     this.snowballs = this.add.group();
 
+    // Create powerUps group
+    this.powerUps = this.add.group({
+      classType: PowerUp,
+      runChildUpdate: true,
+    });
+
     // Create collision manager
     this.collisionManager = new CollisionManager(
       this,
       this.player,
       this.spawnManager.getEnemies(),
       this.platforms,
-      this.snowballs
+      this.snowballs,
+      this.powerUps
     );
 
     // Create combo system
@@ -139,6 +150,9 @@ export class GameScene extends Phaser.Scene {
 
     // Listen for frozen enemies to convert them to snowballs
     this.events.on('enemy:frozen', this.handleEnemyFrozen, this);
+
+    // Listen for power-up collection
+    this.events.on('powerup:collected', this.handlePowerUpCollected, this);
 
     // Start spawning enemies
     this.spawnManager.start();
@@ -196,8 +210,13 @@ export class GameScene extends Phaser.Scene {
     const score = this.player.getScore();
     const remaining = this.spawnManager.getRemainingEnemies();
     const total = this.spawnManager.getTotalEnemies();
+    const activePowerUps = this.player.getActivePowerUps();
 
-    this.hudText.setText(`Lives: ${lives}\nScore: ${score}\nEnemies: ${remaining}/${total}`);
+    const powerUpText = activePowerUps.length > 0
+      ? `\nPowerUps: ${activePowerUps.join(', ')}`
+      : '';
+
+    this.hudText.setText(`Lives: ${lives}\nScore: ${score}\nEnemies: ${remaining}/${total}${powerUpText}`);
   }
 
   private handleEnemyFrozen(enemy: BaseEnemy): void {
@@ -214,9 +233,26 @@ export class GameScene extends Phaser.Scene {
     // Add snowball to group
     this.snowballs.add(snowball);
 
+    // Random power-up drop
+    const roll = Math.random();
+    let cumulativeChance = 0;
+
+    for (const [type, config] of Object.entries(BALANCE.powerUps)) {
+      cumulativeChance += config.dropChance;
+      if (roll < cumulativeChance) {
+        const powerUp = new PowerUp(this, enemy.x, enemy.y, type as PowerUpType);
+        this.powerUps.add(powerUp);
+        break;
+      }
+    }
+
     // Remove the frozen enemy (it's now a snowball)
     enemy.setActive(false);
     enemy.setVisible(false);
+  }
+
+  private handlePowerUpCollected(data: { type: PowerUpType; powerup: PowerUp }): void {
+    this.player.applyPowerUp(data.type);
   }
 
   private handleLevelComplete(): void {
