@@ -1,8 +1,11 @@
 import Phaser from 'phaser';
 import { Player } from '../entities/Player';
+import { Snowball } from '../entities/Snowball';
+import { BaseEnemy } from '../entities/enemies/BaseEnemy';
 import { InputManager } from '../systems/InputManager';
 import { SpawnManager } from '../systems/SpawnManager';
 import { CollisionManager } from '../systems/CollisionManager';
+import { ComboSystem } from '../systems/ComboSystem';
 import { LevelData } from '../types/levels';
 
 export class GameScene extends Phaser.Scene {
@@ -11,6 +14,8 @@ export class GameScene extends Phaser.Scene {
   private platforms!: Phaser.Physics.Arcade.StaticGroup;
   private spawnManager!: SpawnManager;
   private collisionManager!: CollisionManager;
+  private comboSystem!: ComboSystem;
+  private snowballs!: Phaser.GameObjects.Group;
   private hudText!: Phaser.GameObjects.Text;
 
   constructor() {
@@ -117,13 +122,23 @@ export class GameScene extends Phaser.Scene {
     // Create spawn manager
     this.spawnManager = new SpawnManager(this, testLevel);
 
+    // Create snowballs group
+    this.snowballs = this.add.group();
+
     // Create collision manager
     this.collisionManager = new CollisionManager(
       this,
       this.player,
       this.spawnManager.getEnemies(),
-      this.platforms
+      this.platforms,
+      this.snowballs
     );
+
+    // Create combo system
+    this.comboSystem = new ComboSystem(this);
+
+    // Listen for frozen enemies to convert them to snowballs
+    this.events.on('enemy:frozen', this.handleEnemyFrozen, this);
 
     // Start spawning enemies
     this.spawnManager.start();
@@ -155,6 +170,14 @@ export class GameScene extends Phaser.Scene {
     // Update enemies
     this.spawnManager.update(delta, this.player);
 
+    // Update snowballs
+    this.snowballs.getChildren().forEach((child) => {
+      const snowball = child as Snowball;
+      if (snowball.active) {
+        snowball.update();
+      }
+    });
+
     // Update HUD
     this.updateHUD();
 
@@ -172,6 +195,25 @@ export class GameScene extends Phaser.Scene {
     const total = this.spawnManager.getTotalEnemies();
 
     this.hudText.setText(`Lives: ${lives} | Score: ${score} | Enemies: ${remaining}/${total}`);
+  }
+
+  private handleEnemyFrozen(enemy: BaseEnemy): void {
+    if (!enemy.active) return;
+
+    // Create snowball at enemy position
+    const snowball = new Snowball(
+      this,
+      enemy.x,
+      enemy.y,
+      `enemy_${Date.now()}_${Math.random()}`
+    );
+
+    // Add snowball to group
+    this.snowballs.add(snowball);
+
+    // Remove the frozen enemy (it's now a snowball)
+    enemy.setActive(false);
+    enemy.setVisible(false);
   }
 
   private handleLevelComplete(): void {

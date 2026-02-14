@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { Player } from '../entities/Player';
 import { BaseEnemy } from '../entities/enemies/BaseEnemy';
+import { Snowball } from '../entities/Snowball';
 import { BALANCE } from '../config/balance.config';
 
 export class CollisionManager {
@@ -8,18 +9,21 @@ export class CollisionManager {
   private player: Player;
   private enemies: Phaser.GameObjects.Group;
   private platforms: Phaser.Physics.Arcade.StaticGroup;
+  private snowballs: Phaser.GameObjects.Group;
   private activeShots: Phaser.Physics.Arcade.Sprite[] = [];
 
   constructor(
     scene: Phaser.Scene,
     player: Player,
     enemies: Phaser.GameObjects.Group,
-    platforms: Phaser.Physics.Arcade.StaticGroup
+    platforms: Phaser.Physics.Arcade.StaticGroup,
+    snowballs: Phaser.GameObjects.Group
   ) {
     this.scene = scene;
     this.player = player;
     this.enemies = enemies;
     this.platforms = platforms;
+    this.snowballs = snowballs;
 
     this.ensureSnowShotTexture();
     this.setupCollisions();
@@ -56,6 +60,37 @@ export class CollisionManager {
       this
     );
 
+    // Snowballs <-> Platforms (rolling on ground)
+    this.scene.physics.add.collider(this.snowballs, this.platforms);
+
+    // Player <-> Snowballs (kick)
+    this.scene.physics.add.overlap(
+      this.player,
+      this.snowballs,
+      (obj1, obj2) => {
+        this.handlePlayerSnowballCollision(
+          obj1 as Phaser.Types.Physics.Arcade.GameObjectWithBody,
+          obj2 as Phaser.Types.Physics.Arcade.GameObjectWithBody
+        );
+      },
+      undefined,
+      this
+    );
+
+    // Snowballs <-> Enemies (defeat)
+    this.scene.physics.add.overlap(
+      this.snowballs,
+      this.enemies,
+      (obj1, obj2) => {
+        this.handleSnowballEnemyCollision(
+          obj1 as Phaser.Types.Physics.Arcade.GameObjectWithBody,
+          obj2 as Phaser.Types.Physics.Arcade.GameObjectWithBody
+        );
+      },
+      undefined,
+      this
+    );
+
     // Listen for snow shot events from player
     this.scene.events.on('player:shoot', this.handlePlayerShoot, this);
   }
@@ -71,6 +106,36 @@ export class CollisionManager {
     if (enemy.getState() !== 'frozen' && enemy.active) {
       player.takeDamage();
     }
+  }
+
+  private handlePlayerSnowballCollision(
+    playerObj: Phaser.Types.Physics.Arcade.GameObjectWithBody,
+    snowballObj: Phaser.Types.Physics.Arcade.GameObjectWithBody
+  ): void {
+    const player = playerObj as Player;
+    const snowball = snowballObj as Snowball;
+
+    if (!snowball.active || snowball.isCurrentlyRolling()) return;
+
+    // Kick direction based on player position relative to snowball
+    const direction = player.x < snowball.x ? 1 : -1;
+    snowball.kick(direction);
+  }
+
+  private handleSnowballEnemyCollision(
+    snowballObj: Phaser.Types.Physics.Arcade.GameObjectWithBody,
+    enemyObj: Phaser.Types.Physics.Arcade.GameObjectWithBody
+  ): void {
+    const snowball = snowballObj as Snowball;
+    const enemy = enemyObj as BaseEnemy;
+
+    if (!snowball.active || !enemy.active || !snowball.isCurrentlyRolling()) return;
+
+    // Notify combo system before defeating
+    snowball.onEnemyHit(enemy);
+
+    // Defeat the enemy
+    enemy.defeat();
   }
 
   private handlePlayerShoot(data: {

@@ -43,7 +43,7 @@ describe('InputManager', () => {
   });
 
   it('should detect left arrow key press', () => {
-    const leftKey = scene._mockKeys.get('ArrowLeft');
+    const leftKey = scene._mockKeys.get('LEFT');
     leftKey.isDown = true;
 
     const state = inputManager.getInputState();
@@ -51,7 +51,7 @@ describe('InputManager', () => {
   });
 
   it('should detect right arrow key press', () => {
-    const rightKey = scene._mockKeys.get('ArrowRight');
+    const rightKey = scene._mockKeys.get('RIGHT');
     rightKey.isDown = true;
 
     const state = inputManager.getInputState();
@@ -59,7 +59,7 @@ describe('InputManager', () => {
   });
 
   it('should detect jump key press (Space)', () => {
-    const spaceKey = scene._mockKeys.get('Space');
+    const spaceKey = scene._mockKeys.get('SPACE');
     spaceKey.isDown = true;
 
     const state = inputManager.getInputState();
@@ -67,7 +67,7 @@ describe('InputManager', () => {
   });
 
   it('should detect shoot key press (KeyZ)', () => {
-    const zKey = scene._mockKeys.get('KeyZ');
+    const zKey = scene._mockKeys.get('Z');
     zKey.isDown = true;
 
     const state = inputManager.getInputState();
@@ -75,7 +75,7 @@ describe('InputManager', () => {
   });
 
   it('should detect pause key press (Escape)', () => {
-    const escKey = scene._mockKeys.get('Escape');
+    const escKey = scene._mockKeys.get('ESC');
     escKey.isDown = true;
 
     const state = inputManager.getInputState();
@@ -83,8 +83,8 @@ describe('InputManager', () => {
   });
 
   it('should handle multiple simultaneous inputs', () => {
-    const leftKey = scene._mockKeys.get('ArrowLeft');
-    const jumpKey = scene._mockKeys.get('Space');
+    const leftKey = scene._mockKeys.get('LEFT');
+    const jumpKey = scene._mockKeys.get('SPACE');
     leftKey.isDown = true;
     jumpKey.isDown = true;
 
@@ -95,8 +95,8 @@ describe('InputManager', () => {
   });
 
   it('should support alternative key bindings (WASD)', () => {
-    const aKey = scene._mockKeys.get('KeyA');
-    const dKey = scene._mockKeys.get('KeyD');
+    const aKey = scene._mockKeys.get('A');
+    const dKey = scene._mockKeys.get('D');
     aKey.isDown = true;
 
     let state = inputManager.getInputState();
