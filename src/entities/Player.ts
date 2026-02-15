@@ -142,7 +142,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   update(delta: number, inputState: InputState): void {
-    if (!this.body) return;
+    if (!this.body || !this.active) return;
 
     this.shootCooldown = Math.max(0, this.shootCooldown - delta);
     this.invincibilityTimer = Math.max(0, this.invincibilityTimer - delta);
@@ -376,6 +376,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   private updatePowerUps(): void {
+    if (!this.activePowerUps) return;
+
     const now = Date.now();
 
     for (const [type, expiry] of this.activePowerUps.entries()) {
