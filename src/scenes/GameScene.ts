@@ -8,6 +8,10 @@ import { SpawnManager } from '../systems/SpawnManager';
 import { CollisionManager } from '../systems/CollisionManager';
 import { ComboSystem } from '../systems/ComboSystem';
 import { SaveManager } from '../systems/SaveManager';
+import { AudioManager } from '../systems/AudioManager';
+import { ParticleManager } from '../systems/ParticleManager';
+import { ScreenShake } from '../systems/ScreenShake';
+import { TouchControls } from '../systems/TouchControls';
 import { LevelData } from '../types/levels';
 import { PowerUpType } from '../types/entities';
 import { BALANCE } from '../config/balance.config';
@@ -19,6 +23,10 @@ export class GameScene extends Phaser.Scene {
   private spawnManager!: SpawnManager;
   private collisionManager!: CollisionManager;
   private comboSystem!: ComboSystem;
+  private audioManager!: AudioManager;
+  private particleManager!: ParticleManager;
+  private screenShake!: ScreenShake;
+  private touchControls!: TouchControls;
   private snowballs!: Phaser.GameObjects.Group;
   private powerUps!: Phaser.GameObjects.Group;
   private hudText!: Phaser.GameObjects.Text;
@@ -91,6 +99,19 @@ export class GameScene extends Phaser.Scene {
     // Create placeholder background
     this.add.rectangle(0, 0, width, height, 0x87CEEB).setOrigin(0);
 
+    // Create particle texture for effects
+    const particleGraphics = this.add.graphics();
+    particleGraphics.fillStyle(0xffffff, 1);
+    particleGraphics.fillCircle(4, 4, 4);
+    particleGraphics.generateTexture('particle', 8, 8);
+    particleGraphics.destroy();
+
+    // Initialize systems
+    this.audioManager = new AudioManager(this);
+    this.particleManager = new ParticleManager(this);
+    this.screenShake = new ScreenShake(this);
+    this.touchControls = new TouchControls(this);
+
     // Create platforms (placeholder - will be replaced with tilemap later)
     this.platforms = this.physics.add.staticGroup();
 
@@ -152,6 +173,12 @@ export class GameScene extends Phaser.Scene {
     // Create combo system
     this.comboSystem = new ComboSystem(this);
 
+    // Create touch controls
+    this.touchControls.create();
+
+    // Play background music
+    this.audioManager.playBGM('game');
+
     // Listen for frozen enemies to convert them to snowballs
     this.events.on('enemy:frozen', this.handleEnemyFrozen, this);
 
@@ -170,6 +197,27 @@ export class GameScene extends Phaser.Scene {
     // Listen for player death event
     this.events.on('player:died', this.handlePlayerDeath, this);
 
+    // Listen for player actions for audio feedback
+    this.events.on('player:shoot', () => {
+      this.audioManager.playSFX('shoot');
+      this.screenShake.shakeLight();
+    });
+
+    this.events.on('player:jump', () => {
+      this.audioManager.playSFX('jump');
+    });
+
+    this.events.on('player:hit', () => {
+      this.audioManager.playSFX('hit');
+      this.screenShake.shakeMedium();
+    });
+
+    this.events.on('snowball:kick', (data: { x: number; y: number }) => {
+      this.audioManager.playSFX('kick');
+      this.particleManager.createSnowEffect(data.x, data.y);
+      this.screenShake.shakeLight();
+    });
+
     // Add HUD text
     this.hudText = this.add.text(10, 10, '', {
       fontSize: '16px',
@@ -185,8 +233,20 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number): void {
-    // Get input state
-    const inputState = this.inputManager.getInputState();
+    // Get input state from keyboard
+    const keyboardInput = this.inputManager.getInputState();
+
+    // Get input state from touch controls
+    const touchInput = this.touchControls.getInputState();
+
+    // Merge keyboard and touch inputs
+    const inputState = {
+      left: keyboardInput.left || touchInput.left,
+      right: keyboardInput.right || touchInput.right,
+      jump: keyboardInput.jump || touchInput.jump,
+      shoot: keyboardInput.shoot || touchInput.shoot,
+      pause: keyboardInput.pause || touchInput.pause,
+    };
 
     // Update player
     this.player.update(delta, inputState);
@@ -230,6 +290,11 @@ export class GameScene extends Phaser.Scene {
   private handleEnemyFrozen(enemy: BaseEnemy): void {
     if (!enemy.active) return;
 
+    // Play freeze sound and effects
+    this.audioManager.playSFX('freeze');
+    this.particleManager.createFreezeEffect(enemy.x, enemy.y);
+    this.screenShake.shakeLight();
+
     // Create snowball at enemy position
     const snowball = new Snowball(
       this,
@@ -260,6 +325,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleEnemyDefeated(data: { enemy: BaseEnemy; score: number }): void {
+    // Play defeat sound and effects
+    this.audioManager.playSFX('defeat');
+    this.particleManager.createDefeatEffect(data.enemy.x, data.enemy.y);
+    this.screenShake.shakeMedium();
+
     // Add score to player
     this.player.addScore(data.score);
 
@@ -274,7 +344,33 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handlePowerUpCollected(data: { type: PowerUpType; powerup: PowerUp }): void {
+    // Play power-up sound and effects
+    this.audioManager.playSFX('powerup');
+    this.particleManager.createPowerUpEffect(
+      data.powerup.x,
+      data.powerup.y,
+      this.getPowerUpTint(data.type)
+    );
+    this.screenShake.shakeLight();
+
     this.player.applyPowerUp(data.type);
+  }
+
+  private getPowerUpTint(type: PowerUpType): number {
+    switch (type) {
+      case 'speed':
+        return 0x00ff00; // Green
+      case 'jump':
+        return 0x0000ff; // Blue
+      case 'invincibility':
+        return 0xffff00; // Yellow
+      case 'multishot':
+        return 0xff00ff; // Magenta
+      case 'rapidfire':
+        return 0xff0000; // Red
+      default:
+        return 0xffffff; // White
+    }
   }
 
   private handleLevelComplete(): void {
@@ -298,6 +394,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handlePlayerDeath(): void {
+    // Play death sound and effects
+    this.audioManager.playSFX('death');
+    this.screenShake.shakeHeavy();
+    this.audioManager.stopBGM();
+
     // Update stats
     const saveData = SaveManager.load();
     SaveManager.updateStats({

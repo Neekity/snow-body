@@ -21,6 +21,22 @@ export class PreloadScene extends Phaser.Scene {
     // this.load.atlas('player', 'assets/sprites/player.png', 'assets/sprites/player.json');
     // this.load.atlas('enemies', 'assets/sprites/enemies.png', 'assets/sprites/enemies.json');
     // etc.
+
+    // TODO: Load audio files when available
+    // Sound effects
+    // this.load.audio('shoot', 'assets/audio/sfx/shoot.mp3');
+    // this.load.audio('hit', 'assets/audio/sfx/hit.mp3');
+    // this.load.audio('freeze', 'assets/audio/sfx/freeze.mp3');
+    // this.load.audio('kick', 'assets/audio/sfx/kick.mp3');
+    // this.load.audio('defeat', 'assets/audio/sfx/defeat.mp3');
+    // this.load.audio('powerup', 'assets/audio/sfx/powerup.mp3');
+    // this.load.audio('jump', 'assets/audio/sfx/jump.mp3');
+    // this.load.audio('death', 'assets/audio/sfx/death.mp3');
+
+    // Background music
+    // this.load.audio('game', 'assets/audio/bgm/game.mp3');
+    // this.load.audio('menu', 'assets/audio/bgm/menu.mp3');
+    // this.load.audio('gameover', 'assets/audio/bgm/gameover.mp3');
   }
 
   private createLoadingBar(): void {
