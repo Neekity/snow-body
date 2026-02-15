@@ -144,18 +144,17 @@ export class GameScene extends Phaser.Scene {
     const platform3 = this.add.rectangle(width / 2, height - 140, 100, 16, 0x8B4513);
     this.platforms.add(platform3);
 
+    // Create placeholder sprite for player (colored rectangle) - MUST be before Player instantiation
+    if (!this.textures.exists('player')) {
+      const playerGraphics = this.add.graphics();
+      playerGraphics.fillStyle(0xffffff, 1);
+      playerGraphics.fillRect(0, 0, 24, 32);
+      playerGraphics.generateTexture('player', 24, 32);
+      playerGraphics.destroy();
+    }
+
     // Create player
     this.player = new Player(this, levelData.playerStart.x, levelData.playerStart.y);
-
-    // Create placeholder sprite for player (colored rectangle)
-    const playerGraphics = this.add.graphics();
-    playerGraphics.fillStyle(0xffffff, 1);
-    playerGraphics.fillRect(0, 0, 24, 32);
-    playerGraphics.generateTexture('player', 24, 32);
-    playerGraphics.destroy();
-
-    // Set player texture
-    this.player.setTexture('player');
 
     // Create input manager
     this.inputManager = new InputManager(this);
