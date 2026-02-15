@@ -147,7 +147,7 @@ export class GameScene extends Phaser.Scene {
     // Create placeholder sprite for player (colored rectangle) - MUST be before Player instantiation
     if (!this.textures.exists('player')) {
       const playerGraphics = this.add.graphics();
-      playerGraphics.fillStyle(0xffffff, 1);
+      playerGraphics.fillStyle(0x4444ff, 1); // Blue player for visibility
       playerGraphics.fillRect(0, 0, 24, 32);
       playerGraphics.generateTexture('player', 24, 32);
       playerGraphics.destroy();
