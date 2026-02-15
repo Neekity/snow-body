@@ -231,7 +231,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     switch (currentState) {
       case PLAYER_STATES.IDLE:
-        this.setTint(0xffffff);
+        this.setTint(0x4444ff); // Blue tint for visibility
         break;
       case PLAYER_STATES.RUNNING:
         this.setTint(0xaaaaff);
@@ -331,6 +331,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setPosition(x, y);
     this.lives = BALANCE.player.lives;
     this.invincibilityTimer = BALANCE.player.invincibilityDuration;
+    this.activePowerUps.clear();
     this.setActive(true);
     this.stateMachine.transition(PLAYER_EVENTS.RESPAWN);
   }

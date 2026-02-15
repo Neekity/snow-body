@@ -41,7 +41,7 @@ export class LevelLoader {
         layers: [],
       },
       spawns: this.generateSpawns(levelNumber, isBossLevel),
-      playerStart: { x: 400, y: 500 },
+      playerStart: { x: 128, y: 150 },
       timeLimit: BALANCE.level.timeLimitDefault,
       bgmKey: 'level1',
       background: this.getBackgroundName(levelNumber),
