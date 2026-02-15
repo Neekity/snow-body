@@ -12,6 +12,7 @@ import { AudioManager } from '../systems/AudioManager';
 import { ParticleManager } from '../systems/ParticleManager';
 import { ScreenShake } from '../systems/ScreenShake';
 import { TouchControls } from '../systems/TouchControls';
+import { LevelLoader } from '../systems/LevelLoader';
 import { LevelData } from '../types/levels';
 import { PowerUpType } from '../types/entities';
 import { BALANCE } from '../config/balance.config';
@@ -30,6 +31,7 @@ export class GameScene extends Phaser.Scene {
   private snowballs!: Phaser.GameObjects.Group;
   private powerUps!: Phaser.GameObjects.Group;
   private hudText!: Phaser.GameObjects.Text;
+  private currentLevel: number = 1;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -93,11 +95,24 @@ export class GameScene extends Phaser.Scene {
     const width = this.cameras.main.width;
     const height = this.cameras.main.height;
 
-    // Load save data
+    // Load save data to get current level
     const saveData = SaveManager.load();
+    this.currentLevel = saveData.currentLevel;
 
-    // Create placeholder background
-    this.add.rectangle(0, 0, width, height, 0x87CEEB).setOrigin(0);
+    // Load level data
+    const levelData = LevelLoader.loadLevel(this.currentLevel);
+    if (!levelData) {
+      console.error('Failed to load level:', this.currentLevel);
+      return;
+    }
+
+    // Create background based on level
+    const bgColors = [
+      0x87CEEB, 0x98D8E8, 0xB0E0E6, 0x87CEFA, 0x4682B4,
+      0x5F9EA0, 0x6495ED, 0x7B68EE, 0x9370DB, 0x8B7D8B,
+    ];
+    const bgColor = bgColors[(this.currentLevel - 1) % bgColors.length];
+    this.add.rectangle(0, 0, width, height, bgColor).setOrigin(0);
 
     // Create particle texture for effects
     const particleGraphics = this.add.graphics();
@@ -129,11 +144,8 @@ export class GameScene extends Phaser.Scene {
     const platform3 = this.add.rectangle(width / 2, height - 140, 100, 16, 0x8B4513);
     this.platforms.add(platform3);
 
-    // Create test level data
-    const testLevel = this.createTestLevel();
-
     // Create player
-    this.player = new Player(this, testLevel.playerStart.x, testLevel.playerStart.y);
+    this.player = new Player(this, levelData.playerStart.x, levelData.playerStart.y);
 
     // Create placeholder sprite for player (colored rectangle)
     const playerGraphics = this.add.graphics();
@@ -148,8 +160,8 @@ export class GameScene extends Phaser.Scene {
     // Create input manager
     this.inputManager = new InputManager(this);
 
-    // Create spawn manager
-    this.spawnManager = new SpawnManager(this, testLevel);
+    // Create spawn manager with level data
+    this.spawnManager = new SpawnManager(this, levelData);
 
     // Create snowballs group
     this.snowballs = this.add.group();
@@ -217,6 +229,11 @@ export class GameScene extends Phaser.Scene {
       this.particleManager.createSnowEffect(data.x, data.y);
       this.screenShake.shakeLight();
     });
+
+    // Listen for boss events
+    this.events.on('boss:attack', this.handleBossAttack, this);
+    this.events.on('boss:defeated', this.handleBossDefeated, this);
+    this.events.on('boss:explosion', this.handleBossExplosion, this);
 
     // Add HUD text
     this.hudText = this.add.text(10, 10, '', {
@@ -360,14 +377,14 @@ export class GameScene extends Phaser.Scene {
     switch (type) {
       case 'speed':
         return 0x00ff00; // Green
-      case 'jump':
+      case 'range':
         return 0x0000ff; // Blue
-      case 'invincibility':
-        return 0xffff00; // Yellow
-      case 'multishot':
-        return 0xff00ff; // Magenta
-      case 'rapidfire':
+      case 'rapid_fire':
         return 0xff0000; // Red
+      case 'extra_life':
+        return 0xffff00; // Yellow
+      case 'bomb':
+        return 0xff00ff; // Magenta
       default:
         return 0xffffff; // White
     }
@@ -375,22 +392,64 @@ export class GameScene extends Phaser.Scene {
 
   private handleLevelComplete(): void {
     // Update level progress
-    const saveData = SaveManager.load();
-    SaveManager.updateLevelProgress(saveData.currentLevel);
+    SaveManager.updateLevelProgress(this.currentLevel);
 
-    // Show level complete message
-    const width = this.cameras.main.width;
-    const height = this.cameras.main.height;
+    // Check if there are more levels
+    if (this.currentLevel < LevelLoader.getTotalLevels()) {
+      // Show level complete message and advance
+      const width = this.cameras.main.width;
+      const height = this.cameras.main.height;
 
-    this.add.text(width / 2, height / 2, 'LEVEL COMPLETE!', {
-      fontSize: '32px',
-      color: '#ffff00',
-    }).setOrigin(0.5);
+      this.add.text(width / 2, height / 2, 'LEVEL COMPLETE!', {
+        fontSize: '32px',
+        color: '#ffff00',
+      }).setOrigin(0.5);
 
-    // Pause the game after a short delay
+      // Restart scene to load next level
+      this.time.delayedCall(2000, () => {
+        this.scene.restart();
+      });
+    } else {
+      // All levels complete - show victory screen
+      const width = this.cameras.main.width;
+      const height = this.cameras.main.height;
+
+      this.add.text(width / 2, height / 2, 'ALL LEVELS COMPLETE!', {
+        fontSize: '32px',
+        color: '#ffff00',
+      }).setOrigin(0.5);
+
+      this.time.delayedCall(3000, () => {
+        this.scene.start('MenuScene');
+      });
+    }
+  }
+
+  private handleBossAttack(data: { x: number; y: number }): void {
+    this.screenShake.shakeHeavy();
+    this.audioManager.playSFX('hit');
+  }
+
+  private handleBossDefeated(data: { boss: any }): void {
+    this.audioManager.playSFX('defeat');
+    this.particleManager.createDefeatEffect(data.boss.x, data.boss.y);
+    this.screenShake.shakeHeavy();
+
+    // Level complete
     this.time.delayedCall(2000, () => {
-      this.scene.pause();
+      this.handleLevelComplete();
     });
+  }
+
+  private handleBossExplosion(data: { x: number; y: number }): void {
+    // Create multiple explosion effects
+    for (let i = 0; i < 5; i++) {
+      this.time.delayedCall(i * 200, () => {
+        const offsetX = (Math.random() - 0.5) * 100;
+        const offsetY = (Math.random() - 0.5) * 100;
+        this.particleManager.createDefeatEffect(data.x + offsetX, data.y + offsetY);
+      });
+    }
   }
 
   private handlePlayerDeath(): void {

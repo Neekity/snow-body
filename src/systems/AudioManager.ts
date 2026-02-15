@@ -51,10 +51,13 @@ export class AudioManager {
 
     // Play new BGM (placeholder for now)
     if (this.scene.sound.get(music)) {
-      this.bgm = this.scene.sound.play(music, {
+      const sound = this.scene.sound.play(music, {
         volume: this.musicVolume,
         loop,
       });
+      if (sound && typeof sound !== 'boolean') {
+        this.bgm = sound;
+      }
     }
   }
 
@@ -78,8 +81,8 @@ export class AudioManager {
   public setMusicVolume(volume: number): void {
     this.musicVolume = Math.max(0, Math.min(1, volume));
 
-    if (this.bgm) {
-      this.bgm.setVolume(this.musicVolume);
+    if (this.bgm && 'setVolume' in this.bgm) {
+      (this.bgm as any).setVolume(this.musicVolume);
     }
 
     try {

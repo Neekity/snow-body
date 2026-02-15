@@ -3,6 +3,7 @@ import { LevelData, SpawnPoint } from '../types/levels';
 import { Goblin } from '../entities/enemies/Goblin';
 import { Demon } from '../entities/enemies/Demon';
 import { RedDemon } from '../entities/enemies/RedDemon';
+import { BossEnemy } from '../entities/enemies/BossEnemy';
 import { BaseEnemy } from '../entities/enemies/BaseEnemy';
 
 export class SpawnManager {
@@ -20,12 +21,25 @@ export class SpawnManager {
   }
 
   start(): void {
-    // Schedule all spawns based on their delay
-    this.levelData.spawns.forEach(spawnPoint => {
-      this.scene.time.delayedCall(spawnPoint.delay, () => {
-        this.spawnEnemy(spawnPoint);
+    // Check if this is a boss level
+    const isBossLevel = this.levelData.spawns.some(s => s.enemyType === 'boss');
+
+    if (isBossLevel) {
+      // Spawn boss immediately
+      const bossSpawn = this.levelData.spawns.find(s => s.enemyType === 'boss');
+      if (bossSpawn) {
+        this.scene.time.delayedCall(bossSpawn.delay, () => {
+          this.spawnBoss(bossSpawn.x, bossSpawn.y);
+        });
+      }
+    } else {
+      // Schedule all spawns based on their delay
+      this.levelData.spawns.forEach(spawnPoint => {
+        this.scene.time.delayedCall(spawnPoint.delay, () => {
+          this.spawnEnemy(spawnPoint);
+        });
       });
-    });
+    }
   }
 
   private spawnEnemy(spawnPoint: SpawnPoint): void {
@@ -47,6 +61,9 @@ export class SpawnManager {
       case 'red_demon':
         enemy = new RedDemon(this.scene, spawnPoint.x, spawnPoint.y);
         break;
+      case 'boss':
+        // Boss is handled separately
+        return;
       default:
         console.warn(`Unknown enemy type: ${spawnPoint.enemyType}`);
         return;
@@ -64,6 +81,24 @@ export class SpawnManager {
       if (data.enemy === enemy) {
         this.onEnemyDefeated();
       }
+    });
+  }
+
+  private spawnBoss(x: number, y: number): void {
+    // Create placeholder texture for boss if it doesn't exist
+    if (!this.scene.textures.exists('boss')) {
+      this.createPlaceholderTexture('boss');
+    }
+
+    const boss = new BossEnemy(this.scene, x, y);
+    boss.setTexture('boss');
+    this.enemies.add(boss);
+    this.totalEnemies = 1;
+    this.spawnedCount = 1;
+
+    // Listen for boss defeat
+    this.scene.events.once('boss:defeated', () => {
+      this.onEnemyDefeated();
     });
   }
 

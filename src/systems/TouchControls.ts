@@ -4,8 +4,8 @@ export class TouchControls {
   private scene: Phaser.Scene;
   private leftButton!: Phaser.GameObjects.Rectangle;
   private rightButton!: Phaser.GameObjects.Rectangle;
-  private jumpButton!: Phaser.GameObjects.Circle;
-  private shootButton!: Phaser.GameObjects.Circle;
+  private jumpButton!: Phaser.GameObjects.Arc;
+  private shootButton!: Phaser.GameObjects.Arc;
   private inputState: InputState = {
     left: false,
     right: false,
